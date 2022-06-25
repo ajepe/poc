@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+
+        <record id="mrp_workorder_time_employee" model="ir.ui.view">
+       	<field name="name">mrp.workorder.time.employee.form</field>
+       	<field name="model">mrp.workorder</field>
+        <field name="inherit_id" ref="mrp.mrp_production_workorder_form_view_inherit" />
+        <field name="arch" type="xml">
+            <xpath expr="//page/group/field[@name='time_ids']/tree/field[@name='user_id']" position="after">
+                <field name="employee_id"/>
+            </xpath>
+        </field>
+        </record>
+
+    </data>
+</odoo>

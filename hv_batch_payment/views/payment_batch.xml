@@ -16,7 +16,7 @@
                         <group colspan="4">
                             <field name="payment_date"/>
                             <field name="details" required="1"/>
-                            <field name="journal_id" invisible="1"/>
+                            <field name="journal_id" invisible="0"/>
                         </group>
                         <group>
                             <field name="payment_ids">

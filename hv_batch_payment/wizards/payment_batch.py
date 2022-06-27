@@ -92,50 +92,34 @@ class WizardBatchPayment(models.TransientModel):
 
     def confirm_button(self):
         ctx = self.env.context.copy()
-        dict_data = self.repair_data(self.env['account.move'].browse(self.env.context.get('active_ids', [])))
-        batch_id = self.env['account.payment.batch'].create({
-            'details': self.details,
-            'payment_date': self.payment_date,
-            'journal_id': self.journal_id.id,
-        })
-
-        for data in dict_data:
-            invoices = self.env['account.move'].browse(dict_data[data])
-
-            for invoice in invoices:
-                communication = ''
-                pay_amount = 0
-                if abs(invoice.payment_amount) > abs(invoice.amount_residual_signed):
-                    invoice.payment_amount = abs(invoice.amount_residual_signed)
-                    raise Warning(_(
-                        'Payment amount is must greater than 0 and less than %s.')
-                                  % invoice.amount_residual_signed)
-                communication += invoice.move_type in (
-                    'in_invoice', 'in_refund') and invoice.ref or invoice.name + ', '
-                pay_amount += invoice.payment_amount
-
-                line_invoice_pay = self.env['account.move.line'].search([
-                    ('move_id', '=', invoice.id)
-                ], limit=1)
-
-                payment_register = self.env['account.payment.register'].create({
+        active_ids = self.env.context.get('active_ids')
+        if active_ids:
+            move_ids = self.env['account.move'].browse(active_ids)
+            batch_id = self.env['account.payment.batch'].create({
+                'details': self.details,
+                'payment_date': self.payment_date,
+                'journal_id': self.journal_id.id,
+            })
+            for move_id in move_ids:
+                payload = {
                     'journal_id': self.journal_id.id,
                     'payment_method_code': self.env['account.payment.method'].search([('payment_type', '=', 'inbound')], limit=1).code,
                     'payment_date': self.payment_date,
-                    'communication': communication,
-                    'payment_type': invoice.move_type in ('out_invoice', 'in_refund') and 'inbound' or 'outbound',
-                    'amount': abs(pay_amount),
-                    'partner_id': self.env['res.partner'].browse(data).id,
-                    'partner_type': invoice.move_type in ('out_invoice', 'out_refund') and 'customer' or 'supplier',
-                    'currency_id': invoice.currency_id.id,
+                    'communication': self.details,
+                    'payment_type': move_id.move_type in ('out_invoice', 'in_refund') and 'inbound' or 'outbound',
+                    'amount': move_id.amount_residual,
+                    'partner_id': move_id.partner_id.id,
+                    'partner_type': move_id.move_type in ('out_invoice', 'out_refund') and 'customer' or 'supplier',
+                    'currency_id': move_id.currency_id.id,
                     'group_payment': False,
-                    'line_ids': line_invoice_pay,
-                })
-                account_payment = payment_register._create_payments()
 
+                }
+
+                payment_register = self.env['account.payment.register'].with_context({'active_ids': move_id.line_ids.ids, 'active_model':'account.move.line'}).create(payload)
+                account_payment = payment_register._create_payments()
                 account_payment.write({
                     'batch_id': batch_id.id,
-                    'communication': communication,
+                    'communication': self.details,
                 })
 
         view = self.env.ref('hv_batch_payment.batch_payments_form_view')
@@ -150,3 +134,61 @@ class WizardBatchPayment(models.TransientModel):
             'target': 'current',
             'context': ctx,
         }
+
+
+        # for data in dict_data:
+        #     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', data)
+        #     invoices = self.env['account.move'].browse(dict_data[data])
+
+        #     for invoice in invoices:
+        #         communication = ''
+        #         pay_amount = 0
+        #         if abs(invoice.payment_amount) > abs(invoice.amount_residual_signed):
+        #             invoice.payment_amount = abs(invoice.amount_residual_signed)
+        #             raise Warning(_(
+        #                 'Payment amount is must greater than 0 and less than %s.')
+        #                           % invoice.amount_residual_signed)
+        #         communication += invoice.move_type in (
+        #             'in_invoice', 'in_refund') and invoice.ref or invoice.name + ', '
+        #         pay_amount += invoice.payment_amount
+
+        #         # line_invoice_pay = self.env['account.move.line'].search([
+        #         #     ('move_id', '=', invoice.id)
+        #         # ], limit=1)
+
+        #         payload = {
+        #             'journal_id': self.journal_id.id,
+        #             'payment_method_code': self.env['account.payment.method'].search([('payment_type', '=', 'inbound')], limit=1).code,
+        #             'payment_date': self.payment_date,
+        #             'communication': communication,
+        #             'payment_type': invoice.move_type in ('out_invoice', 'in_refund') and 'inbound' or 'outbound',
+        #             'amount': abs(pay_amount),
+        #             'partner_id': self.env['res.partner'].browse(data).id,
+        #             'partner_type': invoice.move_type in ('out_invoice', 'out_refund') and 'customer' or 'supplier',
+        #             'currency_id': invoice.currency_id.id,
+        #             'group_payment': False,
+        #             # 'line_ids': line_invoice_pay,
+        #             # 'destination_account_id': line_invoice_pay.account_id.id
+        #         }
+
+        #         print(payload, '!!!!!!!!!!!!!!!!!!!!!!!!1')
+
+        #         account_payment = payment_register._create_payments()
+
+        #         account_payment.write({
+        #             'batch_id': batch_id.id,
+        #             'communication': communication,
+        #         })
+
+        # view = self.env.ref('hv_batch_payment.batch_payments_form_view')
+        # return {
+        #     'type': 'ir.actions.act_window',
+        #     'name': 'Registered Batch',
+        #     'res_id': batch_id.id,
+        #     'view_mode': 'form',
+        #     'view_id': view.id,
+        #     'views': [(view.id, 'form')],
+        #     'res_model': 'account.payment.batch',
+        #     'target': 'current',
+        #     'context': ctx,
+        # }

@@ -101,11 +101,11 @@ class AccountBatchPayment(models.Model):
                     'bsb': banks[0].bank_id.bsb,
                     'account_number': banks[0].acc_number,
                     'transaction_code': 50,
-                    'amount': payment.amount,
-                    'title': payment.partner_id.name,
-                    'reference': payment.communication,
-                    'trace_bsb': payment.journal_id.bank_id.bsb,
-                    'trace_account_number': payment.journal_id.bank_acc_number,
+                    'amount': payment.amount or '',
+                    'title': payment.partner_id.name or '',
+                    'reference': payment.communication or '',
+                    'trace_bsb': payment.journal_id.bank_id.bsb or '',
+                    'trace_account_number': payment.journal_id.bank_acc_number or '',
                     'payer': payment.journal_id.name_of_remitter,
                 })
         dist_data['details'] = list_details
